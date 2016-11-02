@@ -1,13 +1,13 @@
 {
-  "name": "e-2-e-broadcast-bob",
+  "name": "e2e-broadcast-bob",
   "version": "1.1.2",
   "description": "Put some description here",
   "keywords": [
     "cool",
     "module"
   ],
-  "homepage": "https://github.com/octoblu/e-2-e-broadcast-bob",
-  "bugs": "https://github.com/octoblu/e-2-e-broadcast-bob/issues",
+  "homepage": "https://github.com/octoblu/e2e-broadcast-bob",
+  "bugs": "https://github.com/octoblu/e2e-broadcast-bob/issues",
   "author": {
     "name": "Octoblu",
     "url": "https://github.com/octoblu"
@@ -15,7 +15,7 @@
   "bin": "command.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/octoblu/e-2-e-broadcast-bob.git"
+    "url": "https://github.com/octoblu/e2e-broadcast-bob.git"
   },
   "scripts": {
     "start": "node command.js",
