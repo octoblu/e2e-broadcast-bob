@@ -26,7 +26,9 @@
     "coffee-script": "^1.10.0",
     "colors": "^1.1.2",
     "dashdash": "^1.14.0",
+    "debug": "^2.2.0",
     "meshblu-config": "^6.0.0",
+    "meshblu-firehose-socket.io": "^2.0.3",
     "meshblu-http": "^9.1.0",
     "node-rsa": "^0.4.2"
   },

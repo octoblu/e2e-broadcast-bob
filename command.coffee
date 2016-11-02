@@ -1,13 +1,17 @@
 async         = require 'async'
 colors        = require 'colors'
 dashdash      = require 'dashdash'
+Debug         = require 'debug'
 fs            = require 'fs'
 _             = require 'lodash'
 MeshbluConfig = require 'meshblu-config'
+Firehose      = require 'meshblu-firehose-socket.io'
 MeshbluHttp   = require 'meshblu-http'
 NodeRSA       = require 'node-rsa'
 
 packageJSON = require './package.json'
+
+debug = Debug 'e2e:bob'
 
 OPTIONS = [{
   names: ['help', 'h']
@@ -24,7 +28,9 @@ class Command
     process.on 'uncaughtException', @die
     {@aliceUuid} = @parseOptions()
     @config  = new MeshbluConfig()
+    @bobUuid = @config.toJSON().uuid
     @meshblu = new MeshbluHttp @config.toJSON()
+    @firehose = new Firehose meshbluConfig: @config.toJSON()
 
   parseOptions: =>
     parser = dashdash.createParser({options: OPTIONS})
@@ -49,8 +55,18 @@ class Command
   run: =>
     @setup (error) =>
       return @die error if error?
-      console.log 'done'
-      process.exit 0
+      @firehose.on 'message', @onMessage
+
+  onMessage: ({metadata, data}) =>
+    debug 'onMessage'
+    firstHop = _.first metadata.route
+    return debug 'not from alice', firstHop unless firstHop.from == @aliceUuid
+    {encrypted} = data
+    return debug 'no encrypted', data unless encrypted?
+
+    @getAesKey (error, key) =>
+      return @die error if error?
+      console.log 'key', key
 
   setup: (callback) =>
     async.series [
@@ -58,7 +74,11 @@ class Command
       @updatePublicKey
       @subscribeToAlice
       @subscribeToSelf
+      @connectToFirehose
     ], callback
+
+  connectToFirehose: (callback) =>
+    @firehose.connect callback
 
   findOrCreateKeyPair: (callback) =>
     try
@@ -77,19 +97,31 @@ class Command
     @keys = {privateKey, publicKey}
     callback null
 
+  getAesKey: (callback) =>
+    @meshblu.device @aliceUuid, (error, alice) =>
+      return callback error if error?
+      encryptedAesKey = _.get alice, "keys.#{@bobUuid}.key"
+
+      try
+        privateKey = new NodeRSA @keys.privateKey
+        aesKey = privateKey.decrypt encryptedAesKey
+        return callback null, aesKey
+      catch error
+        callback error
+
   subscribeToAlice: (callback) =>
     emitterUuid    = @aliceUuid
-    subscriberUuid = @config.toJSON().uuid
+    subscriberUuid = @bobUuid
     @meshblu.createSubscription {type: 'broadcast.sent', emitterUuid, subscriberUuid}, callback
 
   subscribeToSelf: (callback) =>
-    emitterUuid    = @config.toJSON().uuid
-    subscriberUuid = @config.toJSON().uuid
+    emitterUuid    = @bobUuid
+    subscriberUuid = @bobUuid
 
     @meshblu.createSubscription {type: 'broadcast.received', emitterUuid, subscriberUuid}, callback
 
   updatePublicKey: (callback) =>
-    deviceUuid = @config.toJSON().uuid
+    deviceUuid = @bobUuid
     @meshblu.update deviceUuid, {publicKey: @keys.publicKey}, callback
 
   die: (error) =>
