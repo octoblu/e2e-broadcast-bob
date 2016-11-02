@@ -1,6 +1,8 @@
 dashdash      = require 'dashdash'
+fs            = require 'fs'
 MeshbluConfig = require 'meshblu-config'
 MeshbluHttp   = require 'meshblu-http'
+NodeRSA       = require 'node-rsa'
 
 packageJSON = require './package.json'
 
@@ -38,9 +40,34 @@ class Command
   run: =>
     @setup (error) =>
       return @die error if error?
+      console.log 'done'
+      process.exit 0
 
   setup: (callback) =>
-    callback()
+    @findOrCreateKeyPair (error) =>
+      return callback error if error?
+      @updatePublicKey callback
+
+  findOrCreateKeyPair: (callback) =>
+    try
+      {privateKey, publicKey} = JSON.parse fs.readFileSync './keys.json'
+      throw new Error unless privateKey? && publicKey?
+      @keys = {privateKey, publicKey}
+      return callback null
+    catch
+      console.warn 'no valid keys.json found, generating new pair'
+
+    key = new NodeRSA()
+    key.generateKeyPair()
+    privateKey = key.exportKey 'private'
+    publicKey  = key.exportKey 'public'
+    fs.writeFileSync './keys.json', JSON.stringify({privateKey, publicKey}, null, 2)
+    @keys = {privateKey, publicKey}
+    callback null
+
+  updatePublicKey: (callback) =>
+    deviceUuid = @config.toJSON().uuid
+    @meshblu.update deviceUuid, {publicKey: @keys.publicKey}, callback
 
   die: (error) =>
     return process.exit(0) unless error?
