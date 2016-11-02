@@ -1,5 +1,6 @@
 async         = require 'async'
 colors        = require 'colors'
+crypto        = require 'crypto'
 dashdash      = require 'dashdash'
 Debug         = require 'debug'
 fs            = require 'fs'
@@ -66,7 +67,11 @@ class Command
 
     @getAesKey (error, key) =>
       return @die error if error?
-      console.log 'key', key
+      decipher = crypto.createDecipher 'aes-256-ctr', key
+      decrypted =  decipher.update encrypted, 'base64', 'utf8'
+      decrypted += decipher.final 'utf8'
+
+      console.log 'decrypted', decrypted
 
   setup: (callback) =>
     async.series [
